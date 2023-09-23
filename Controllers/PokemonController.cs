@@ -22,7 +22,7 @@ namespace kotas_desafio_back_end.Controllers
 
             // Comece a medir o tempo
             stopwatch.Start();
-            List<RawPokemonData> randomPokemons = await pokeAPIService.Get10RandomPokemons();
+            List<Pokemon> randomPokemons = await pokeAPIService.Get10RandomPokemonsAsync();
             // Pare o cronômetro
             stopwatch.Stop();
 
@@ -43,7 +43,7 @@ namespace kotas_desafio_back_end.Controllers
                 return BadRequest();
             }
 
-            RawPokemonData pokemon = await pokeAPIService.GetPokemon(idOrName);
+            Pokemon? pokemon = await pokeAPIService.GetPokemonAsync(idOrName);
 
             if (pokemon is not null) { 
                 return Ok(pokemon);

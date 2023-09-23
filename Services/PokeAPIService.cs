@@ -7,129 +7,206 @@ namespace kotas_desafio_back_end.Services
 {
     public class PokeAPIService
     {
-        /*
-            Cache here was added because we don't need to fetch the total number of pokemons all the time, 
-            it's a heavy request and doesn't change constantly, so it was implemented to store the value 
-            in the memory cache for 24 hours before fetching it again.
+        private readonly IMemoryCache _cache;
+        private readonly HttpClient _httpClient;
 
-            Average time of request to fetch random top 10 after implementation dropped by around 4 seconds.
-            Going from 14 seconds to 10.
-        */
-        private readonly IMemoryCache cache;
         public PokeAPIService(IMemoryCache cache)
         {
-            this.cache = cache;
+            _cache = cache;
+            _httpClient = new HttpClient();
         }
-        public async Task<int> GetNumberOfPokemons()
+
+        private async Task<int> GetNumberOfPokemonsAsync()
         {
-            if (cache.TryGetValue<int>("NumberOfPokemons", out var numberOfPokemons))
-            {
+            if (_cache.TryGetValue<int>("NumberOfPokemons", out var numberOfPokemons))
                 return numberOfPokemons;
-            }
-            else
-            {
-                return await RefreshAndCacheNumberOfPokemons();
-            }
+
+            numberOfPokemons = await RefreshAndCacheNumberOfPokemonsAsync();
+            return numberOfPokemons;
         }
-        private async Task<int> RefreshAndCacheNumberOfPokemons()
+
+        private async Task<int> RefreshAndCacheNumberOfPokemonsAsync()
         {
             try
             {
-                string url = "https://pokeapi.co/api/v2/pokemon-species/?limit=0";
-                using HttpClient httpClient = new();
-                HttpResponseMessage response = await httpClient.GetAsync(url);
-                if (response.IsSuccessStatusCode)
+                var url = "https://pokeapi.co/api/v2/pokemon-species/?limit=0";
+                var response = await _httpClient.GetStringAsync(url);
+                var jsonResponse = JObject.Parse(response);
+                var numberOfPokemons = jsonResponse.Value<int>("count");
+
+                var cacheEntryOptions = new MemoryCacheEntryOptions
                 {
-                    string responseBody = await response.Content.ReadAsStringAsync();
-                    JObject jsonResponse = JObject.Parse(responseBody);
-                    int numberOfPokemons = (int)jsonResponse["count"];
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24)
+                };
 
-                    //Storing the value in memory cache in for 24 hours
-                    var cacheEntryOptions = new MemoryCacheEntryOptions
-                    {
-                        AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24)
-                    };
-                    cache.Set("NumberOfPokemons", numberOfPokemons, cacheEntryOptions);
-
-                    return numberOfPokemons;
-                }
-
-                return 0;
+                _cache.Set("NumberOfPokemons", numberOfPokemons, cacheEntryOptions);
+                return numberOfPokemons;
             }
             catch (Exception)
             {
                 return 0;
             }
         }
-        private async Task<List<int>> GetRandomIds()
+
+        private async Task<List<int>> GetRandomIdsAsync(int count)
         {
-            int numberOfPokemons = await GetNumberOfPokemons();
+            var numberOfPokemons = await GetNumberOfPokemonsAsync();
 
             if (numberOfPokemons == 0)
-            {
                 return new List<int>();
-            }
 
-            Random random = new();
-            List<int> randomIds = new();
+            var random = new Random();
+            var randomIds = new List<int>();
 
-            while (randomIds.Count < 10)
+            while (randomIds.Count < count)
             {
-                int randomId = random.Next(1, numberOfPokemons);
+                var randomId = random.Next(1, numberOfPokemons + 1);
 
                 if (!randomIds.Contains(randomId))
-                {
                     randomIds.Add(randomId);
-                }
             }
 
             return randomIds;
         }
-        public async Task<List<RawPokemonData>> Get10RandomPokemons()
+
+        public async Task<Pokemon?> GetPokemonAsync(string idOrName)
         {
             try
             {
-                List<int> randomIds = await GetRandomIds();
+                var url = $"https://pokeapi.co/api/v2/pokemon/{idOrName}/";
+                var response = await _httpClient.GetStringAsync(url);
+                var rawPokemonData = JsonConvert.DeserializeObject<RawPokemonData>(response);
 
-                if (randomIds.Count == 0)
+                if (rawPokemonData == null)
+                    return null;
+
+                var evolutions = await GetEvolutionChainAsync(rawPokemonData.Species.Url);
+                var pokemon = await RawPokemonDataToPokemonAsync(rawPokemonData);
+
+                pokemon.Evolutions = evolutions;
+                return pokemon;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        private async Task<Pokemon> RawPokemonDataToPokemonAsync(RawPokemonData rawPokemonData)
+        {
+            var pokemon = new Pokemon
+            {
+                Id = rawPokemonData.Id,
+                Name = rawPokemonData.Name
+            };
+
+            if (!string.IsNullOrEmpty(rawPokemonData.Sprites.FrontDefault))
+            {
+                var spriteUrl = rawPokemonData.Sprites.FrontDefault;
+
+                try
                 {
-                    return new List<RawPokemonData>();
+                    var imageBytes = await _httpClient.GetByteArrayAsync(spriteUrl);
+                    pokemon.Base64Sprite = Convert.ToBase64String(imageBytes);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+            }
+
+            pokemon.Types = rawPokemonData.Types
+                .Where(types => !string.IsNullOrEmpty(types.Type.Name))
+                .Select(types => types.Type.Name)
+                .ToList();
+
+            return pokemon;
+        }
+
+        private async Task<List<string>> GetEvolutionChainAsync(string url)
+        {
+            var response = await _httpClient.GetStringAsync(url);
+
+            if (string.IsNullOrEmpty(response))
+                return new List<string>();
+
+            var pokemonSpecies = JsonConvert.DeserializeObject<PokemonSpecies>(response);
+
+            if (pokemonSpecies == null || pokemonSpecies.EvolutionChain == null)
+                return new List<string>();
+
+            response = await _httpClient.GetStringAsync(pokemonSpecies.EvolutionChain.Url);
+
+            if (string.IsNullOrEmpty(response))
+                return new List<string>();
+
+            var evolutionChain = JsonConvert.DeserializeObject<EvolutionChain>(response);
+
+            if (evolutionChain == null || evolutionChain.Chain == null)
+                return new List<string>();
+
+            var species = GetSpeciesNames(evolutionChain);
+            return species;
+        }
+
+        private static List<string> GetSpeciesNames(EvolutionChain evolutionChain)
+        {
+            List<string> speciesNames = new();
+            if (evolutionChain != null && evolutionChain.Chain != null)
+            {
+                foreach (var evolvesToItem in evolutionChain.Chain.EvolvesTo)
+                {
+                    if (evolvesToItem.Species != null)
+                    {
+                        speciesNames.Add(evolvesToItem.Species.Name);
+                    }
+
+                    if (evolvesToItem.EvolvesTo != null)
+                    {
+                        GetSpeciesNamesRecursive(evolvesToItem, speciesNames);
+                    }
+                }
+            }
+
+            return speciesNames;
+        }
+        private static void GetSpeciesNamesRecursive(EvolutionChainEvolvesToItems evolvesToItem, List<string> speciesNames)
+        {
+            foreach (var nextEvolvesToItem in evolvesToItem.EvolvesTo)
+            {
+                if (nextEvolvesToItem.Species != null)
+                {
+                    speciesNames.Add(nextEvolvesToItem.Species.Name);
                 }
 
-                List<RawPokemonData> pokemons = new();
-                HttpClient httpClient = new();
+                if (nextEvolvesToItem.EvolvesTo != null)
+                {
+                    GetSpeciesNamesRecursive(nextEvolvesToItem, speciesNames);
+                }
+            }
+        }
 
-                /*
-                    This implementation was added to make requests in parallel instead of waiting for each request, iterating one by one, deserialize and add to the list.
-                    
-                    Average time of request to fetch random top 10 after implementation dropped by around 9 seconds.
-                    Going from 11 seconds to 2.
-                */
-                var options = new ParallelOptions { MaxDegreeOfParallelism = 10 };
+        public async Task<List<Pokemon>> Get10RandomPokemonsAsync()
+        {
+            try
+            {
+                var randomIds = await GetRandomIdsAsync(10);
 
+                if (!randomIds.Any())
+                    return new List<Pokemon>();
+
+                var pokemons = new List<Pokemon>();
+
+                // Fetch Pokemon data in parallel
                 var tasks = randomIds.Select(async randomId =>
                 {
-                    string url = $"https://pokeapi.co/api/v2/pokemon/{randomId}/";
-
-                    try
+                    var pokemon = await GetPokemonAsync(randomId.ToString());
+                    if (pokemon != null)
                     {
-                        HttpResponseMessage response = await httpClient.GetAsync(url);
-                        if (response.IsSuccessStatusCode)
+                        lock (pokemons)
                         {
-                            string responseBody = await response.Content.ReadAsStringAsync();
-                            RawPokemonData pokemon = JsonConvert.DeserializeObject<RawPokemonData>(responseBody);
-                            if (pokemon is not null)
-                            {
-                                lock (pokemons)
-                                {
-                                    pokemons.Add(pokemon);
-                                }
-                            }
+                            pokemons.Add(pokemon);
                         }
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine(ex.Message);
                     }
                 });
 
@@ -139,32 +216,7 @@ namespace kotas_desafio_back_end.Services
             }
             catch (Exception)
             {
-                return new List<RawPokemonData>();
-            }
-        }
-        public async Task<RawPokemonData?> GetPokemon(string idOrName)
-        {
-            try
-            {
-
-                string url = $"https://pokeapi.co/api/v2/pokemon/{idOrName}/";
-                using HttpClient httpClient = new();
-                HttpResponseMessage response = await httpClient.GetAsync(url);
-                if (response.IsSuccessStatusCode)
-                {
-                    string responseBody = await response.Content.ReadAsStringAsync();
-                    RawPokemonData pokemon = JsonConvert.DeserializeObject<RawPokemonData>(responseBody);
-                    if (pokemon is not null)
-                    {
-                        return pokemon;
-                    }
-                }
-
-                return null;
-            }
-            catch (Exception)
-            {
-                return null;
+                return new List<Pokemon>();
             }
         }
     }
