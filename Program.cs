@@ -1,6 +1,7 @@
 using kotas_desafio_back_end.Data;
 using kotas_desafio_back_end.Services;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 

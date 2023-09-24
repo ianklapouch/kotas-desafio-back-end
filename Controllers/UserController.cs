@@ -20,12 +20,12 @@ namespace kotas_desafio_back_end.Controllers
         [HttpPost]
         public async Task<ActionResult<List<User>>> AddUser(User newUser)
         {
-            if (newUser is not null)
-            {
-                appDbContext.Users.Add(newUser);
-                await appDbContext.SaveChangesAsync();
-                return Ok(await appDbContext.Users.ToListAsync());
-            }
+            //if (newUser is not null)
+            //{
+            //    appDbContext.Users.Add(newUser);
+            //    await appDbContext.SaveChangesAsync();
+            //    return Ok(await appDbContext.Users.ToListAsync());
+            //}
             return BadRequest("Object instance not set");
         }
 

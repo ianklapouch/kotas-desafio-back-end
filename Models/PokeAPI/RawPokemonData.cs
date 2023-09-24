@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace kotas_desafio_back_end.Models
+namespace kotas_desafio_back_end.Models.PokeAPI
 {
     //This object is made to receive responses from the PokéAPI.
     public class RawPokemonData
@@ -31,6 +31,8 @@ namespace kotas_desafio_back_end.Models
 
     public class Type
     {
-        public string Name { get; set; }
+        public required string Name { get; set; }
+        public required string Url { get; set; }
+
     }
 }

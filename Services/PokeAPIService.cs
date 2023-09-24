@@ -1,4 +1,5 @@
 ﻿using kotas_desafio_back_end.Models;
+using kotas_desafio_back_end.Models.PokeAPI;
 using Microsoft.Extensions.Caching.Memory;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -94,12 +95,13 @@ namespace kotas_desafio_back_end.Services
 
         private async Task<Pokemon> RawPokemonDataToPokemonAsync(RawPokemonData rawPokemonData)
         {
-            var pokemon = new Pokemon
-            {
-                Id = rawPokemonData.Id,
-                Name = rawPokemonData.Name
-            };
+            //var pokemon = new Pokemon
+            //{
+            //    Id = rawPokemonData.Id,
+            //    Name = rawPokemonData.Name
+            //};
 
+            string Base64Sprite = string.Empty;
             if (!string.IsNullOrEmpty(rawPokemonData.Sprites.FrontDefault))
             {
                 var spriteUrl = rawPokemonData.Sprites.FrontDefault;
@@ -107,7 +109,7 @@ namespace kotas_desafio_back_end.Services
                 try
                 {
                     var imageBytes = await _httpClient.GetByteArrayAsync(spriteUrl);
-                    pokemon.Base64Sprite = Convert.ToBase64String(imageBytes);
+                    Base64Sprite = Convert.ToBase64String(imageBytes);
                 }
                 catch (Exception ex)
                 {
@@ -115,10 +117,19 @@ namespace kotas_desafio_back_end.Services
                 }
             }
 
-            pokemon.Types = rawPokemonData.Types
+            List<string> types = rawPokemonData.Types
                 .Where(types => !string.IsNullOrEmpty(types.Type.Name))
                 .Select(types => types.Type.Name)
                 .ToList();
+
+            Pokemon pokemon = new()
+            {
+                Id = rawPokemonData.Id,
+                Name = rawPokemonData.Name,
+                Base64Sprite = Base64Sprite,
+                Types = types
+            };
+
 
             return pokemon;
         }
