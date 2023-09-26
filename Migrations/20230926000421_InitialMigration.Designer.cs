@@ -11,8 +11,8 @@ using kotas_desafio_back_end.Data;
 namespace kotas_desafio_back_end.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20230924163803_TesteMigration")]
-    partial class TesteMigration
+    [Migration("20230926000421_InitialMigration")]
+    partial class InitialMigration
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -47,9 +47,10 @@ namespace kotas_desafio_back_end.Migrations
 
                     b.Property<string>("Cpf")
                         .IsRequired()
+                        .HasMaxLength(11)
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("Idade")
+                    b.Property<sbyte>("Idade")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Nome")
@@ -57,6 +58,9 @@ namespace kotas_desafio_back_end.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Cpf")
+                        .IsUnique();
 
                     b.ToTable("PokemonMasters");
                 });

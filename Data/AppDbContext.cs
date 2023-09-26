@@ -10,22 +10,8 @@ namespace kotas_desafio_back_end.Data
         public DbSet<CapturedPokemon> CapturedPokemons { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            //modelBuilder.Entity<PokemonPokemonMaster>()
-            //    .HasKey(ppm => new { ppm.PokemonMasterId, ppm.PokemonId });
-
-            //modelBuilder.Entity<Pokemon>().HasMany(pm => pm.PokemonMasters);
-            modelBuilder.Entity<PokemonMaster>().HasMany(p => p.CapturedPokemons);
-
-
-            //modelBuilder.Entity<PokemonPokemonMaster>()
-            //    .HasOne(ppm => ppm.PokemonMaster)
-            //    .WithMany()
-            //    .HasForeignKey(ppm => ppm.PokemonMasterId);
-
-            //modelBuilder.Entity<PokemonPokemonMaster>()
-            //    .HasOne(ppm => ppm.Pokemon)
-            //    .WithMany()
-            //    .HasForeignKey(ppm => ppm.PokemonId);
+            modelBuilder.Entity<PokemonMaster>().HasMany(pm => pm.CapturedPokemons);
+            modelBuilder.Entity<PokemonMaster>().HasIndex(pm => pm.Cpf).IsUnique();
         }
     }
 }

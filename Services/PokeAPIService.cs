@@ -84,6 +84,12 @@ namespace kotas_desafio_back_end.Services
                 var evolutions = await GetEvolutionChainAsync(rawPokemonData.Species.Url);
                 var pokemon = await RawPokemonDataToPokemonAsync(rawPokemonData);
 
+                bool evolutionsHasBasePokemon = evolutions.Any(e => e == pokemon.Name);
+                if (evolutionsHasBasePokemon)
+                {
+                    evolutions.Remove(pokemon.Name);
+                }
+
                 pokemon.Evolutions = evolutions;
                 return pokemon;
             }
@@ -95,11 +101,6 @@ namespace kotas_desafio_back_end.Services
 
         private async Task<Pokemon> RawPokemonDataToPokemonAsync(RawPokemonData rawPokemonData)
         {
-            //var pokemon = new Pokemon
-            //{
-            //    Id = rawPokemonData.Id,
-            //    Name = rawPokemonData.Name
-            //};
 
             string Base64Sprite = string.Empty;
             if (!string.IsNullOrEmpty(rawPokemonData.Sprites.FrontDefault))
@@ -209,6 +210,7 @@ namespace kotas_desafio_back_end.Services
                 var pokemons = new List<Pokemon>();
 
                 // Fetch Pokemon data in parallel
+                var options = new ParallelOptions { MaxDegreeOfParallelism = 10 };
                 var tasks = randomIds.Select(async randomId =>
                 {
                     var pokemon = await GetPokemonAsync(randomId.ToString());

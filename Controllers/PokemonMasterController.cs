@@ -20,6 +20,14 @@ namespace kotas_desafio_back_end.Controllers
 
             try
             {
+
+                bool cpfAlreadyRegistered = appDbContext.PokemonMasters.Any(pm => pm.Cpf == newPokemonMaster.Cpf);
+                if (cpfAlreadyRegistered)
+                {
+                    return Conflict("There is already a pokemon master registered with this CPF!");
+                }
+
+
                 PokemonMaster pokemonMaster = new()
                 {
                     Nome = newPokemonMaster.Nome,

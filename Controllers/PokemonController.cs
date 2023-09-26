@@ -3,7 +3,6 @@ using kotas_desafio_back_end.Models;
 using kotas_desafio_back_end.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System;
 using System.Diagnostics;
 
 namespace kotas_desafio_back_end.Controllers
@@ -22,72 +21,68 @@ namespace kotas_desafio_back_end.Controllers
         [HttpGet]
         public async Task<IActionResult> Get()
         {
-            // Inicialize o cronômetro
-            Stopwatch stopwatch = new Stopwatch();
-
-            // Comece a medir o tempo
-            stopwatch.Start();
             List<Pokemon> randomPokemons = await _pokeAPIService.Get10RandomPokemonsAsync();
-            // Pare o cronômetro
-            stopwatch.Stop();
-
-            // Obtenha o tempo decorrido em milissegundos
-            long tempoDecorridoMs = stopwatch.ElapsedMilliseconds;
-
-            // Exiba o tempo decorrido
-            Console.WriteLine("Tempo decorrido: " + tempoDecorridoMs + " ms");
             return Ok(randomPokemons);
-
         }
 
+
         [HttpGet("{idOrName?}")]
-        public async Task<IActionResult> Get(string? idOrName = null)
+        public async Task<IActionResult> Get(string idOrName)
         {
-            if (string.IsNullOrEmpty(idOrName))
-            {
-                return BadRequest();
-            }
-
             Pokemon? pokemon = await _pokeAPIService.GetPokemonAsync(idOrName);
-
-            if (pokemon is not null)
+            if (pokemon is null)
             {
-                return Ok(pokemon);
+                return NotFound();
             }
 
-            return NotFound();
+            return Ok(pokemon);
         }
 
         [HttpPost("CatchPokemon")]
         public async Task<IActionResult> CatchPokemon(CatchPokemon catchPokemon)
         {
-
-            PokemonMaster? pokemonMaster = await _appDbContext.PokemonMasters
-                                                              .Include(pm => pm.CapturedPokemons)
-                                                              .FirstOrDefaultAsync(pm => pm.Id == catchPokemon.PokemonMasterId);
-            if (pokemonMaster is null)
+            try
             {
-                return NotFound("Pokemon Master not found!");
+
+
+                PokemonMaster? pokemonMaster = await _appDbContext.PokemonMasters
+                                                                  .Include(pm => pm.CapturedPokemons)
+                                                                  .FirstOrDefaultAsync(pm => pm.Id == catchPokemon.PokemonMasterId);
+                if (pokemonMaster is null)
+                {
+                    return NotFound("Pokemon Master not found!");
+                }
+
+
+                Pokemon? pokemon = await _pokeAPIService.GetPokemonAsync(catchPokemon.PokemonIdOrName);
+                if (pokemon is null)
+                {
+                    return NotFound("Pokemon not found!");
+                }
+
+
+                bool pokemonAlreadyCaught = pokemonMaster.CapturedPokemons.Any(p => p.PokemonId == pokemon.Id);
+                if (pokemonAlreadyCaught)
+                {
+                    return Conflict($"Pokemon already captured by: {pokemonMaster.Nome}");
+                }
+
+                CapturedPokemon capturedPokemon = new()
+                {
+                    PokemonId = pokemon.Id,
+                };
+
+
+                pokemonMaster.CapturedPokemons.Add(capturedPokemon);
+                _appDbContext.CapturedPokemons.Add(capturedPokemon);
+                await _appDbContext.SaveChangesAsync();
+
+                return Ok();
             }
-
-
-            Pokemon? pokemon = await _pokeAPIService.GetPokemonAsync(catchPokemon.PokemonIdOrName);
-            if (pokemon is null)
+            catch (Exception ex)
             {
-                return NotFound("Pokemon Master not found!");
+                return StatusCode(500, "Ocorreu um erro ao criar o PokemonMaster: " + ex.Message);
             }
-
-            CapturedPokemon capturedPokemon = new()
-            {
-                PokemonId = pokemon.Id
-            };
-
-            _appDbContext.CapturedPokemons.Add(capturedPokemon);
-
-
-            await _appDbContext.SaveChangesAsync();
-
-            return Ok();
         }
 
         [HttpGet]
@@ -104,7 +99,7 @@ namespace kotas_desafio_back_end.Controllers
 
             if (pokemonMaster.CapturedPokemons is null)
             {
-                return NotFound("Pokemon Master not found!");
+                return NotFound("Pokemon not found!");
             }
 
             List<Pokemon> pokemons = new();
@@ -121,4 +116,3 @@ namespace kotas_desafio_back_end.Controllers
         }
     }
 }
- 

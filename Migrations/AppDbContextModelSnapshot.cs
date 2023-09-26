@@ -44,9 +44,10 @@ namespace kotas_desafio_back_end.Migrations
 
                     b.Property<string>("Cpf")
                         .IsRequired()
+                        .HasMaxLength(11)
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("Idade")
+                    b.Property<sbyte>("Idade")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Nome")
@@ -54,6 +55,9 @@ namespace kotas_desafio_back_end.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Cpf")
+                        .IsUnique();
 
                     b.ToTable("PokemonMasters");
                 });
