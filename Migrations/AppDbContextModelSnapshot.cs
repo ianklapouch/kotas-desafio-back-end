@@ -47,7 +47,7 @@ namespace kotas_desafio_back_end.Migrations
                         .HasMaxLength(11)
                         .HasColumnType("TEXT");
 
-                    b.Property<sbyte>("Idade")
+                    b.Property<int>("Idade")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Nome")

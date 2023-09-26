@@ -11,7 +11,7 @@ using kotas_desafio_back_end.Data;
 namespace kotas_desafio_back_end.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20230926000421_InitialMigration")]
+    [Migration("20230926224516_InitialMigration")]
     partial class InitialMigration
     {
         /// <inheritdoc />
@@ -50,7 +50,7 @@ namespace kotas_desafio_back_end.Migrations
                         .HasMaxLength(11)
                         .HasColumnType("TEXT");
 
-                    b.Property<sbyte>("Idade")
+                    b.Property<int>("Idade")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Nome")

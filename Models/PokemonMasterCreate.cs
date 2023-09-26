@@ -9,6 +9,7 @@ namespace kotas_desafio_back_end.Models
         public int Idade { get; set; }
         [Required]
         [MaxLength(11)]
+        [MinLength(11)]
         public required string Cpf { get; set; }
     }
 }

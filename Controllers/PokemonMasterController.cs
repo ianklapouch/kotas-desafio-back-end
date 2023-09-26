@@ -15,23 +15,11 @@ namespace kotas_desafio_back_end.Controllers
             _pokemonMasterService = pokemonMasterService;
         }
 
-        [HttpPost]
-        public async Task<ActionResult> CreatePokemonMaster(PokemonMasterCreate pokemonMasterCreate)
+        [HttpGet]
+        public async Task<IActionResult> Get()
         {
-
-            try
-            {
-                PokemonMaster pokemonMaster = await _pokemonMasterService.CreatePokemonMaster(pokemonMasterCreate);
-                return CreatedAtAction(nameof(GetPokemonMasterById), new { id = pokemonMaster.Id }, pokemonMaster);
-            }
-            catch(PokemonMasterServiceException ex)
-            {
-                return StatusCode(ex.StatusCode, ex.Message);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred: " + ex.Message);
-            }
+            List<PokemonMaster> pokemonMasters = await _pokemonMasterService.GetPokemonMastersAsync();
+            return Ok(pokemonMasters);
         }
 
         [HttpGet("{id}")]
@@ -39,7 +27,7 @@ namespace kotas_desafio_back_end.Controllers
         {
             try
             {
-                PokemonMaster? pokemonMaster = await _pokemonMasterService.GetPokemonMaster(id);
+                PokemonMaster? pokemonMaster = await _pokemonMasterService.GetPokemonMasterAsync(id);
                 if (pokemonMaster is null)
                 {
                     return NotFound();
@@ -51,6 +39,25 @@ namespace kotas_desafio_back_end.Controllers
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred: " + ex.Message);
 
+            }
+        }
+
+        [HttpPost]
+        public async Task<ActionResult> CreatePokemonMaster(PokemonMasterCreate pokemonMasterCreate)
+        {
+
+            try
+            {
+                PokemonMaster pokemonMaster = await _pokemonMasterService.CreatePokemonMasterAsync(pokemonMasterCreate);
+                return CreatedAtAction(nameof(GetPokemonMasterById), new { id = pokemonMaster.Id }, pokemonMaster);
+            }
+            catch(PokemonMasterServiceException ex)
+            {
+                return StatusCode(ex.StatusCode, ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred: " + ex.Message);
             }
         }
     }

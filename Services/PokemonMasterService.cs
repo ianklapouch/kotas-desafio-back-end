@@ -7,16 +7,14 @@ namespace kotas_desafio_back_end.Services
     public class PokemonMasterService : IPokemonMasterService
     {
         private readonly AppDbContext _appDbContext;
-        private readonly PokeAPIService _pokeAPIService;
 
-        public PokemonMasterService(AppDbContext appDbContext, PokeAPIService pokeAPIService)
+        public PokemonMasterService(AppDbContext appDbContext)
         {
             _appDbContext = appDbContext;
-            _pokeAPIService = pokeAPIService;
         }
 
 
-        public async Task<PokemonMaster> CreatePokemonMaster(PokemonMasterCreate pokemonMasterCreate)
+        public async Task<PokemonMaster> CreatePokemonMasterAsync(PokemonMasterCreate pokemonMasterCreate)
         {
             bool cpfAlreadyRegistered = _appDbContext.PokemonMasters.Any(pm => pm.Cpf == pokemonMasterCreate.Cpf);
             if (cpfAlreadyRegistered)
@@ -37,12 +35,17 @@ namespace kotas_desafio_back_end.Services
             return pokemonMaster;
         }
 
-        public async Task<PokemonMaster?> GetPokemonMaster(Guid id)
+        public async Task<PokemonMaster?> GetPokemonMasterAsync(Guid id)
         {
             PokemonMaster? pokemonMaster = await _appDbContext.PokemonMasters
                                                        .Include(pm => pm.CapturedPokemons)
                                                        .FirstOrDefaultAsync(pm => pm.Id == id);
             return pokemonMaster;
+        }
+
+        public async Task<List<PokemonMaster>> GetPokemonMastersAsync()
+        {
+            return await _appDbContext.PokemonMasters.ToListAsync();
         }
     }
 }

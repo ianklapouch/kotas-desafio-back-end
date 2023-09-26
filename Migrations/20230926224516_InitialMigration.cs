@@ -17,7 +17,7 @@ namespace kotas_desafio_back_end.Migrations
                 {
                     Id = table.Column<Guid>(type: "TEXT", nullable: false),
                     Nome = table.Column<string>(type: "TEXT", nullable: false),
-                    Idade = table.Column<sbyte>(type: "INTEGER", nullable: false),
+                    Idade = table.Column<int>(type: "INTEGER", nullable: false),
                     Cpf = table.Column<string>(type: "TEXT", maxLength: 11, nullable: false)
                 },
                 constraints: table =>
