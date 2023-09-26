@@ -1,5 +1,5 @@
-﻿using kotas_desafio_back_end.Data;
-using kotas_desafio_back_end.Models;
+﻿using kotas_desafio_back_end.Models;
+using kotas_desafio_back_end.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace kotas_desafio_back_end.Controllers
@@ -8,56 +8,50 @@ namespace kotas_desafio_back_end.Controllers
     [ApiController]
     public class PokemonMasterController : ControllerBase
     {
-        private readonly AppDbContext appDbContext;
-        public PokemonMasterController(AppDbContext appDbContext)
+        private readonly IPokemonMasterService _pokemonMasterService;
+
+        public PokemonMasterController(IPokemonMasterService pokemonMasterService)
         {
-            this.appDbContext = appDbContext;
+            _pokemonMasterService = pokemonMasterService;
         }
 
         [HttpPost]
-        public async Task<ActionResult> CreatePokemonMaster(PokemonMasterCreate newPokemonMaster)
+        public async Task<ActionResult> CreatePokemonMaster(PokemonMasterCreate pokemonMasterCreate)
         {
 
             try
             {
-
-                bool cpfAlreadyRegistered = appDbContext.PokemonMasters.Any(pm => pm.Cpf == newPokemonMaster.Cpf);
-                if (cpfAlreadyRegistered)
-                {
-                    return Conflict("There is already a pokemon master registered with this CPF!");
-                }
-
-
-                PokemonMaster pokemonMaster = new()
-                {
-                    Nome = newPokemonMaster.Nome,
-                    Idade = newPokemonMaster.Idade,
-                    Cpf = newPokemonMaster.Cpf
-                };
-
-                appDbContext.PokemonMasters.Add(pokemonMaster);
-                await appDbContext.SaveChangesAsync();
+                PokemonMaster pokemonMaster = await _pokemonMasterService.CreatePokemonMaster(pokemonMasterCreate);
                 return CreatedAtAction(nameof(GetPokemonMasterById), new { id = pokemonMaster.Id }, pokemonMaster);
-
+            }
+            catch(PokemonMasterServiceException ex)
+            {
+                return StatusCode(ex.StatusCode, ex.Message);
             }
             catch (Exception ex)
             {
-                // Trate a exceção aqui, dependendo do tipo de erro.
-                // Por exemplo, você pode logar o erro ou retornar uma resposta de erro personalizada.
-                return StatusCode(500, "Ocorreu um erro ao criar o PokemonMaster: " + ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred: " + ex.Message);
             }
         }
-        
+
         [HttpGet("{id}")]
         public async Task<ActionResult<PokemonMaster>> GetPokemonMasterById(Guid id)
         {
-            var pokemonMaster = await appDbContext.PokemonMasters.FindAsync(id);
-            if (pokemonMaster == null)
+            try
             {
-                return NotFound();
-            }
+                PokemonMaster? pokemonMaster = await _pokemonMasterService.GetPokemonMaster(id);
+                if (pokemonMaster is null)
+                {
+                    return NotFound();
+                }
 
-            return pokemonMaster;
+                return pokemonMaster;
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred: " + ex.Message);
+
+            }
         }
     }
 }

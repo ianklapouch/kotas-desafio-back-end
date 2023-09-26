@@ -13,7 +13,9 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddMemoryCache();
-builder.Services.AddSingleton<PokeAPIService>();
+builder.Services.AddScoped<PokeAPIService>();
+builder.Services.AddScoped<IPokemonService, PokemonService>();
+builder.Services.AddScoped<IPokemonMasterService, PokemonMasterService>();
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"));

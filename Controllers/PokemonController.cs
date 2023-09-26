@@ -1,9 +1,6 @@
-﻿using kotas_desafio_back_end.Data;
-using kotas_desafio_back_end.Models;
+﻿using kotas_desafio_back_end.Models;
 using kotas_desafio_back_end.Services;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using System.Diagnostics;
 
 namespace kotas_desafio_back_end.Controllers
 {
@@ -11,31 +8,44 @@ namespace kotas_desafio_back_end.Controllers
     [ApiController]
     public class PokemonController : ControllerBase
     {
-        private readonly AppDbContext _appDbContext;
-        private readonly PokeAPIService _pokeAPIService;
-        public PokemonController(AppDbContext appDbContext, PokeAPIService pokeAPIService)
+        private readonly IPokemonService _pokemonService;
+
+        public PokemonController(IPokemonService pokemonService)
         {
-            _pokeAPIService = pokeAPIService;
-            _appDbContext = appDbContext;
-        }
-        [HttpGet]
-        public async Task<IActionResult> Get()
-        {
-            List<Pokemon> randomPokemons = await _pokeAPIService.Get10RandomPokemonsAsync();
-            return Ok(randomPokemons);
+            _pokemonService = pokemonService;
         }
 
-
-        [HttpGet("{idOrName?}")]
-        public async Task<IActionResult> Get(string idOrName)
+        [HttpGet("GetRandomPokemons")]
+        public async Task<IActionResult> GetRandomPokemons()
         {
-            Pokemon? pokemon = await _pokeAPIService.GetPokemonAsync(idOrName);
-            if (pokemon is null)
+            try
             {
-                return NotFound();
+                List<Pokemon> pokemons = await _pokemonService.GetRandomPokemonsAsync();
+                return Ok(pokemons);
             }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred: " + ex.Message);
+            }
+        }
 
-            return Ok(pokemon);
+        [HttpGet("{pokemonIdOrName?}")]
+        public async Task<IActionResult> Get(string pokemonIdOrName)
+        {
+            try
+            {
+                Pokemon? pokemon = await _pokemonService.GetPokemonAsync(pokemonIdOrName);
+                if (pokemon is null)
+                {
+                    return NotFound();
+                }
+
+                return Ok(pokemon);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred: " + ex.Message);
+            }
         }
 
         [HttpPost("CatchPokemon")]
@@ -43,76 +53,36 @@ namespace kotas_desafio_back_end.Controllers
         {
             try
             {
-
-
-                PokemonMaster? pokemonMaster = await _appDbContext.PokemonMasters
-                                                                  .Include(pm => pm.CapturedPokemons)
-                                                                  .FirstOrDefaultAsync(pm => pm.Id == catchPokemon.PokemonMasterId);
-                if (pokemonMaster is null)
-                {
-                    return NotFound("Pokemon Master not found!");
-                }
-
-
-                Pokemon? pokemon = await _pokeAPIService.GetPokemonAsync(catchPokemon.PokemonIdOrName);
-                if (pokemon is null)
-                {
-                    return NotFound("Pokemon not found!");
-                }
-
-
-                bool pokemonAlreadyCaught = pokemonMaster.CapturedPokemons.Any(p => p.PokemonId == pokemon.Id);
-                if (pokemonAlreadyCaught)
-                {
-                    return Conflict($"Pokemon already captured by: {pokemonMaster.Nome}");
-                }
-
-                CapturedPokemon capturedPokemon = new()
-                {
-                    PokemonId = pokemon.Id,
-                };
-
-
-                pokemonMaster.CapturedPokemons.Add(capturedPokemon);
-                _appDbContext.CapturedPokemons.Add(capturedPokemon);
-                await _appDbContext.SaveChangesAsync();
-
+                await _pokemonService.CatchPokemonAsync(catchPokemon);
                 return Ok();
+            }
+            catch (PokemonServiceException ex)
+            {
+                return StatusCode(ex.StatusCode, ex.Message);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, "Ocorreu um erro ao criar o PokemonMaster: " + ex.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred: " + ex.Message);
             }
         }
 
         [HttpGet]
         [Route("CapturedPokemons")]
-        public async Task<IActionResult> GetCapturedPokemons(Guid id)
+        public async Task<IActionResult> GetCapturedPokemons(Guid pokemonMasterId)
         {
-            PokemonMaster? pokemonMaster = await _appDbContext.PokemonMasters
-                                                            .Include(pm => pm.CapturedPokemons)
-                                                            .FirstOrDefaultAsync(pm => pm.Id == id);
-            if (pokemonMaster is null)
+            try
             {
-                return NotFound("Pokemon Master not found!");
+                List<Pokemon> capturedPokemons = await _pokemonService.GetCapturedPokemonsAsync(pokemonMasterId);
+                return Ok(capturedPokemons);
             }
-
-            if (pokemonMaster.CapturedPokemons is null)
+            catch (PokemonServiceException ex)
             {
-                return NotFound("Pokemon not found!");
+                return StatusCode(ex.StatusCode, ex.Message);
             }
-
-            List<Pokemon> pokemons = new();
-            foreach (CapturedPokemon capturedPokemon in pokemonMaster.CapturedPokemons)
+            catch (Exception ex)
             {
-                Pokemon? pokemon = await _pokeAPIService.GetPokemonAsync(capturedPokemon.PokemonId.ToString());
-                if (pokemon is not null)
-                {
-                    pokemons.Add(pokemon);
-                }
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred: " + ex.Message);
             }
-
-            return Ok(pokemons);
         }
     }
 }

@@ -182,7 +182,7 @@ namespace kotas_desafio_back_end.Services
 
             return speciesNames;
         }
-        private static void GetSpeciesNamesRecursive(EvolutionChainEvolvesToItems evolvesToItem, List<string> speciesNames)
+        private static void GetSpeciesNamesRecursive(EvolutionChainEvolvesTo evolvesToItem, List<string> speciesNames)
         {
             foreach (var nextEvolvesToItem in evolvesToItem.EvolvesTo)
             {
@@ -198,7 +198,7 @@ namespace kotas_desafio_back_end.Services
             }
         }
 
-        public async Task<List<Pokemon>> Get10RandomPokemonsAsync()
+        public async Task<List<Pokemon>> GetRandomPokemonsAsync()
         {
             try
             {
